@@ -33,8 +33,13 @@ input,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(-
 textarea{min-height:140px;font:12px/1.4 ui-monospace,monospace}
 .bar{height:8px;border-radius:99px;background:var(--bd);overflow:hidden;margin-bottom:6px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--cy),var(--ac),var(--gd));transition:width .4s}
 details{margin-top:8px} summary{cursor:pointer;color:var(--mu)}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+#mode{min-height:40px;font-size:.85rem;white-space:nowrap;margin-top:4px}
+.reel{position:relative;height:220px;max-width:300px;margin:8px auto;overflow:hidden;border-radius:12px;border:1px solid var(--bd);background:var(--bg)}
+.reel::after{content:"";position:absolute;left:0;right:0;top:88px;height:44px;border:2px solid var(--gd);border-radius:8px;pointer-events:none;box-shadow:0 0 14px #fbbf2455}
+.rr{height:44px;line-height:44px;padding-left:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 </style></head><body><div class="w">
-<h1>COSMIC FATE</h1><p class="tag">Every Spin Creates a Destiny.</p>
+<header class="top"><div><h1>COSMIC FATE</h1><p class="tag">Every Spin Creates a Destiny.</p></div><div style="display:flex;gap:6px"><button id="snd" data-act="snd" aria-label="Sound" style="min-height:40px;margin-top:4px"></button><button id="mode" data-act="mode" aria-pressed="false"></button></div></header>
 <nav id="nav"></nav><main id="app"></main>
 <p class="mu">Browser-only edition: progress and characters are saved on this device (localStorage). No accounts, cloud sync or public sharing here.</p>
 </div>
@@ -43,9 +48,7 @@ const R={c:40,u:25,r:15,e:10,l:6,m:2,k:1,i:.1,x:.03},RN=['Common','Uncommon','Ra
 const RC=['#64748b','#16a34a','#2563eb','#9333ea','#d97706','#dc2626','#0891b2','#db2777'];
 const rarOf=w=>w>=40?0:w>=25?1:w>=15?2:w>=10?3:w>=6?4:w>=2?5:w>=1?6:7;
 const slug=s=>s.toLowerCase().replace(/[^a-z0-9]+/g,'-'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-// "Name|rarityLetter|cosmicDelta;..."
 const L=s=>s.split(';').map(x=>{const[n,r='c',d]=x.split('|');return{id:slug(n),name:n,w:R[r],...(d!==undefined&&{d:+d})}});
-// Ordered tiers: weight falls with each step up the ladder (explicit tier index kept by list order).
 const T=(s,st=2)=>s.split(';').map((n,i)=>({id:slug(n),name:n,w:+(i<st?12:40*Math.pow(.78,i-st)).toFixed(2)}));
 const W={
 race:L("Human;Peak Human|u;Superhuman|r;Elf;High Elf|u;Dark Elf|u;Dwarf;Orc;Goblin;Fairy|u;Angel|r;Archangel|e;Fallen Angel|r;Demon|r;Archdemon|e;Vampire|u;Werewolf|u;Skeleton;Lich|e;Undead;Dragon|e;Elder Dragon|l;Ancient Dragon|l;Phoenix|l;Griffin|r;Kitsune|r;Beastkin;Merfolk;Golem;Elemental|r;Living Shadow|r;Android|u;Cyborg|u;Alien|u;Celestial Being|e;Demigod|e;God|l;Giant|u;Titan|l;Cosmic Warrior|m;Voidborn|m;Starborn|m;Multiversal Entity|k;Conceptual Being|k;Reality Architect|i;Eldritch Horror|m;Slime;Shapeshifter|u;Ordinary Animal;Vacuum Robot|r;Sentient Baguette|i;Ultimate Race|x"),
@@ -60,19 +63,16 @@ weapon:L("No Weapon;Fists;Claws;Dagger;Katana;Greatsword;Spear;Bow;Scythe;Axe;Ha
 enchantment:L("Fire;Ice;Lightning;Poison;Vampiric|u;Soul-Stealing|r;Explosive|u;Regeneration|u;Gravity|r;Space-Cutting|e;Time Distortion|e;Teleportation|r;Energy Absorption|r;Power Negation|e;Reality Cutting|m;Divine Blessing|r;Demonic Curse|r;Sentient Weapon|e;Useless Enchantment|u"),
 power:L("Pyrokinesis;Telekinesis;Super Regeneration|u;Shapeshifting|u;Flight;Force Fields;Telepathy;Invisibility|u;Illusions;Gravity Manipulation|r;Space Manipulation|e;Time Manipulation|l;Dimensional Manipulation|l;Reality Warping|m;Probability Manipulation|r;Fate Manipulation|m;Soul Manipulation|r;Power Absorption|r;Power Copying|r;Power Negation|e;Adaptive Evolution|e;Infinite Growth|m;Summoning;Creation and Destruction|e;Void Manipulation|l;Multiversal Manipulation|k;Existence Erasure|i;Toon Force|m;Anti-Magic|r;Technopathy|u;Resurrection|e;Absolute Defense|l;Talks to Pigeons;Slightly Warm Hands"),
 mastery:T("Cannot Control It;Unstable;Beginner;Novice;Trained;Intermediate;Advanced;Expert;Master;Grandmaster;Perfect Control;Legendary Mastery;Cosmic Mastery;Absolute Mastery",3),
-// Cosmic Force: d = tier shift applied to Strength, Speed and Durability (originals are never overwritten).
 cosmic:L("Cosmic Weakening|u|-2;Power Suppression|u|-2;Reality Instability|u|-1;Cosmic Curse|u|-1;Diminishing Strength|u|-1;Power Reversal|r|-3;Severe Limitation|r|-2;Dormant Cosmic Potential|c|0;Unknown Cosmic Nature|u|0;Cosmic Balance|u|0;Cosmic Empowerment|u|1;Reality Resistance|r|1;Primordial Blessing|r|2;Power Amplification|r|2;Accelerated Evolution|e|3;Dimensional Ascension|l|4;Universal Authority|m|6;Primordial Authority|k|9;ZERO|i|-99;INFINITE|i|99"),
 weakness:L("No Weakness|u;Elemental Vulnerability;Poison;Anti-Magic;Power Negation;Soul Attacks;Fragile Core;Slow Regeneration;Limited Stamina;Poor Concentration;Emotional Instability;Arrogance;Fear of Darkness;Vulnerable While Sleeping;Night-Only Power;Daylight-Only Power;Recharge Requirement;Severe Energy Consumption;Unlucky in Critical Situations;Compulsive Honesty;Distracted by Food;Ridiculous Phobia")};
 const G=[{id:'yes',name:'Yes',w:1,g:1,c:'#16a34a'},{id:'no',name:'No',w:1,g:1,c:'#dc2626'}];W.enchGate=G;W.cosmicGate=G;
 W.job=L("Villager;Farmer;Merchant;Blacksmith;Guard;Soldier;Hunter;Thief;Adventurer;Mage;Scholar;Bard;Priest|u;Knight|u;Assassin|u;Alchemist|u;Noble|u;Captain of the Guard|u;Archmage|r;Hero|r;Sage|r;Court Wizard|r;General|r;Demon Slayer|r;King|e;Emperor|l");
 W.animal=L("Wolf;Fox;Cat;Dog;Rabbit;Bear;Deer;Boar;Hawk;Owl;Crow;Snake;Tiger|u;Lion|u;Panther|u;Bat|u;Shark|u;Elephant|r;Kraken|r;Chimera|e");
-// Ultimate Race: the rarest race; its true form is one of the rare races that are NOT on the main race wheel.
 const SUB={ultimate:L("Primordial|k;Universal Entity|m;Chaos Incarnate|m;Timeborn|l;Fateborn|l;Primordial Dragon|l;Cosmic Parasite|e;Reality Anomaly|e;Dimensional Traveler|r;Ancient Beast|r;Living Crystal|r;Death Knight|r;Wraith|r"),dragon:L("Fire Dragon;Ice Dragon;Thunder Dragon;Earth Dragon;Shadow Dragon;Light Dragon;Void Dragon|r;Time Dragon|e;Chaos Dragon|e;Cosmic Dragon|m;Elementless Dragon|u;Mutated Dragon|u"),
 angel:L("Guardian;Warrior;Judgment Angel|u;Seraph|r;Fallen|u"),demon:L("Imp;Infernal;Succubus|u;Hellknight|r;Blood Demon|r"),
 undead:L("Zombie;Revenant|u;Wraith|u;Death Knight|r;Bone Colossus|r"),alien:L("Insectoid;Energy Being|u;Hive Mind|r;Silicon Lifeform|u")};
 const subKey=id=>id==='ultimate-race'?'ultimate':/dragon$/.test(id)?'dragon':/angel$/.test(id)?'angel':/demon$/.test(id)?'demon':/^(undead|skeleton|lich)$/.test(id)?'undead':id==='alien'?'alien':'';
 const TALL=['giant','building-sized','mountain-sized','island-sized','planet-sized'],TINY=['microscopic','insect-sized','mouse-sized','cat-sized','child-sized'];
-// Giants and Titans: tall sizes x5, tiny sizes x0.1 (original rarity kept in rw).
 const sized=r=>/^(giant|titan)$/.test(r.race?.id)?W.size.map(o=>({...o,rw:o.w,w:o.w*(TALL.includes(o.id)?5:TINY.includes(o.id)?.1:1)})):W.size;
 const noW=r=>r.weapon?.id==='no-weapon',yes=(r,g)=>r[g]?.id==='yes';
 const pool=(k,r)=>k==='subtype'?(SUB[subKey(r.race?.id||'')]||[]):k==='enchGate'?(noW(r)?[]:W.enchGate):k==='enchantment'?(noW(r)||!yes(r,'enchGate')?[]:W.enchantment):k==='cosmic'?(yes(r,'cosmicGate')?W.cosmic:[]):k==='size'?sized(r):k==='job'?(/^(human|peak-human|superhuman)$/.test(r.race?.id)?W.job:[]):k==='animal'?(r.race?.id==='beastkin'?W.animal:[]):W[k];
@@ -88,6 +88,13 @@ function settle(s){let f=false;for(const[k]of ST){if(f){s.st[k]='locked';continu
  if(!pool(k,s.res).length){s.st[k]='skipped';s.skip[k]=k==='subtype'?`${s.res.race.name} has no subtype wheel.`:k==='job'?'Only humans have an occupation.':k==='animal'?'Only beastkin have an animal form.':k==='cosmic'?'Cosmic Force did not awaken.':k==='enchantment'?'The weapon is not enchanted.':'No weapon, so nothing to enchant.';continue}s.st[k]='ready';f=true}return s}
 let S=ld(KEY,null);if(!S||!S.st)S=fresh();
 let tab='create',busy=false,view={k:null},ask=null,msg='',panel=null,q='';
+let mode=ld('cf_mode','wheel');
+const GAM=.65,STATK=['strength','speed','durability','intelligence','experience','mastery'],RH=44;
+// Boosted odds (always on, wheel and reel): w^0.65 keeps order but lifts rare; strong races tilt stat tiers upward (.012 per race tier).
+const luck=(k,p,r)=>{const t=rarOf(r.race?.rw??r.race?.w??40),b=STATK.includes(k)?.012*t:0;
+ return p.map((o,i)=>o.g?o:{...o,rw:o.rw??o.w,w:Math.pow(o.w,GAM)*Math.exp(b*i)})};
+const eff=k=>luck(k,pool(k,S.res),S.res);
+const reelHtml=()=>`<div class="reel" aria-label="Reel"><div id="rl" style="transform:translateY(${view.y}px)">${view.strip.map(o=>`<div class="rr" style="border-left:6px solid ${o.c||RC[rarOf(o.rw??o.w)]}">${esc(o.name)}</div>`).join('')}</div></div>`;
 let DEV=false;try{DEV=location.hash==='#dev'||localStorage.getItem('cf_dev')==='1'}catch{}
 const cur=()=>ST.find(([k])=>S.st[k]!=='confirmed'&&S.st[k]!=='skipped')?.[0];
 const two=key=>{if(ask!==key){ask=key;render();return false}ask=null;return true};
@@ -95,14 +102,28 @@ const save=()=>sv(KEY,S);
 function wheelSvg(segs){const n=segs.length,a=360/n,pt=(t,r)=>[150+r*Math.sin(t*Math.PI/180),150-r*Math.cos(t*Math.PI/180)];
  return `<svg viewBox="0 0 300 300" role="img" aria-label="Wheel">`+segs.map((o,i)=>{const[x0,y0]=pt(i*a,148),[x1,y1]=pt((i+1)*a,148);
  return `<path d="M150 150L${x0} ${y0}A148 148 0 0 1 ${x1} ${y1}Z" fill="${o.c||RC[rarOf(o.rw??o.w)]}" stroke="#0007"/>`+(n<=12?`<text transform="rotate(${(i+.5)*a} 150 150)" x="150" y="40" text-anchor="middle" font-size="11" fill="#fff">${esc(o.name.slice(0,14))}</text>`:'')}).join('')+`</svg>`}
-function spin(k){if(busy||S.st[k]!=='ready')return;busy=true;const p=pool(k,S.res),r=pick(p);let segs=shuffle(p).slice(0,12),i=segs.findIndex(o=>o.id===r.id);
+let snd=ld('cf_snd',true),AC=null;
+const au=()=>{try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume()}catch{}return AC};
+const tone=(f,t,dur,type,v)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+.005);g.gain.exponentialRampToValueAtTime(.0001,t+dur);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+dur+.02)};
+// Ticks slow down like the spin eases out; the stop chime climbs higher for rarer results.
+function sfx(d,r){if(!snd||!au())return;try{const t0=AC.currentTime+.02,N=28;
+ if(d>0)for(let j=0;j<N;j++)tone(520+j*6,t0+d/1000*Math.pow(j/N,2.2),.05,'square',.05);
+ const tier=rarOf(r.rw??r.w),n=Math.min(2+Math.floor(tier/2),5),e=t0+d/1000+.03;
+ for(let i=0;i<n;i++)tone(440*Math.pow(2,([0,4,7,12,16][i]+tier)/12),e+i*.09,.5,'triangle',.16);
+ tone(110,e,.25,'sine',.25)}catch{}}
+function spin(k){if(busy||S.st[k]!=='ready')return;busy=true;const p=eff(k),r=pick(p),d=reduced?0:3200;sfx(d,r);
+ if(mode==='reel'){const n=p.length,strip=[...shuffle(p),...shuffle(p),...shuffle(p)],i=2*n+strip.slice(2*n).findIndex(o=>o.id===r.id);
+  S.res[k]=r;S.st[k]='revealed';save();view={k,strip,y:0};render();
+  const el=document.getElementById('rl'),y=-(i-2)*RH;el.getBoundingClientRect();
+  el.style.transition=`transform ${d}ms cubic-bezier(.12,.6,.1,1)`;el.style.transform=`translateY(${y}px)`;view.y=y;
+  setTimeout(()=>{busy=false;render()},d+100);return}
+ let segs=shuffle(p).slice(0,12),i=segs.findIndex(o=>o.id===r.id);
  if(i<0){i=Math.floor(rnd()*segs.length);segs[i]=r}
  S.res[k]=r;S.st[k]='revealed';save();view={k,segs,rot:0};render();
- const a=360/segs.length,t=1800-(i+.5)*a,d=reduced?0:3200,wh=document.getElementById('wh');wh.getBoundingClientRect();
+ const a=360/segs.length,t=1800-(i+.5)*a,wh=document.getElementById('wh');wh.getBoundingClientRect();
  wh.style.transition=`transform ${d}ms cubic-bezier(.12,.6,.1,1)`;wh.style.transform=`rotate(${t}deg)`;view.rot=t;setTimeout(()=>{busy=false;render()},d+100)}
 const A=['Vael','Dra','Zy','Nyx','Aeth','Vor','Kael','Xyth','Azra','Mor','Ser','Ith'],B=['tha','ko','ra','ar','ze','lo','vi','ga'],C=['rion','ryn','kos','thax','era','kiel','dis','mir'];
 const x=a=>a[Math.floor(rnd()*a.length)];
-// Naming rule: joke races (vacuum/baguette/animal/slime) get comedic names, everything else fantasy syllables.
 const genName=()=>/vacuum|baguette|animal|slime/.test(S.res.race.id)?x(['Sir','Lord','The Unfortunate','Captain'])+' '+x(['Baguette','Vacuum','Pigeon','Spoon','Gerald']):x(A)+x(B)+x(C);
 function charObj(){const r=S.res,c=r.cosmic||{name:'No Cosmic Force',d:0},d=c.d||0,st=k=>{const i=W[k].findIndex(o=>o.id===r[k].id),e=Math.max(0,Math.min(W[k].length-1,i+d));return{original:W[k][i].name,effective:W[k][e].name}};
  const ws=ST.filter(([k])=>S.st[k]==='confirmed'&&!r[k].g).map(([k])=>rarOf(r[k].rw??r[k].w)),mean=ws.reduce((a,b)=>a+b,0)/ws.length;
@@ -113,19 +134,20 @@ const stat=s=>s.original===s.effective?s.original:`${s.original} → ${s.effecti
 const lines=o=>[['Name',o.name],['Title',o.title],['Rarity',o.rarity],['Race',o.race+(o.subtype?' — '+o.subtype:'')],...(o.occupation?[['Occupation',o.occupation]]:[]),...(o.animal?[['Animal Form',o.animal]]:[]),['Element',o.element],['Size & Form',o.size],['Strength',stat(o.strength)],['Speed',stat(o.speed)],['Durability',stat(o.durability)],['Intelligence',o.intelligence],['Fighting Experience',o.experience],['Weapon',o.weapon+(o.enchantment&&o.enchantment!=='No Enchantment'?' — '+o.enchantment:'')],['Power',o.power],['Mastery',o.mastery],['Cosmic Force',o.cosmicForce.name+' ('+o.cosmicForce.effect+')'],['Weakness',o.weakness]];
 const text=o=>lines(o).map(([a,b])=>a+': '+b).join('\n');
 async function out(label,t){panel={label,t};try{await navigator.clipboard.writeText(t);msg='Copied to clipboard.'}catch{msg='Clipboard blocked here — select the text below and copy it.'}render()}
-function render(){const nav=document.getElementById('nav'),n=ld(CK,[]).length;
+function render(){const mb=document.getElementById('mode');mb.textContent=mode==='reel'?'🎰 Reel':'🎡 Wheel';mb.className=mode==='reel'?'on':'';mb.setAttribute('aria-pressed',mode==='reel');const sb=document.getElementById('snd');sb.textContent=snd?'🔊':'🔇';sb.setAttribute('aria-pressed',snd);
+ const nav=document.getElementById('nav'),n=ld(CK,[]).length;
  nav.innerHTML=`<button class="${tab==='create'?'on':''}" data-act="tab" data-v="create">Create</button><button class="${tab==='col'?'on':''}" data-act="tab" data-v="col">Collection (${n})</button>`;
  document.getElementById('app').innerHTML=(tab==='create'?createView():colView())+(msg?`<p class="mu" role="status">${esc(msg)}</p>`:'')+(panel?`<div class="card"><b>${esc(panel.label)}</b><textarea readonly onfocus="this.select()">${esc(panel.t)}</textarea></div>`:'')}
 function createView(){const k=cur(),chips=ST.map(([id,l])=>{const s=S.st[id];
  return s==='confirmed'?`<button class="chip done" data-act="reroll" data-k="${id}" title="Reroll this and everything after it">${l}: ${esc(S.res[id].name)}${ask==='rr'+id?' — sure?':''}</button>`:s==='skipped'?`<span class="chip skip" title="${esc(S.skip[id])}">${l} (skipped)</span>`:`<span class="chip ${id===k?'cur':''}">${l}</span>`}).join('');
- const dn=ST.filter(([i])=>S.st[i]==='confirmed').length,pc=Math.round(ST.filter(([i])=>S.st[i]==='confirmed'||S.st[i]==='skipped').length/ST.length*100),head=`<div class="card"><div class="bar"><i style="width:${pc}%"></i></div><div class="mu">${k?'Wheel of Destiny · spin '+(dn+1):'Your destiny is revealed'}</div></div>`;
+ const dn=ST.filter(([i])=>S.st[i]==='confirmed').length,pc=Math.round(ST.filter(([i])=>S.st[i]==='confirmed'||S.st[i]==='skipped').length/ST.length*100),head=`<div class="card"><div class="bar"><i style="width:${pc}%"></i></div><div class="mu">${k?'Destiny '+(mode==='reel'?'Reel':'Wheel')+' · spin '+(dn+1):'Your destiny is revealed'}</div></div>`;
  if(!k){if(!S.name){S.name=genName();save()}const o=charObj();
   return head+`<div class="card"><h2 style="margin:0;color:var(--gd)">${esc(o.name)}</h2><div class="mu">${esc(o.title)} · ${esc(o.rarity)}</div>${lines(o).slice(3).map(([a,b])=>`<div class="row"><span>${a}</span><span class="${String(b).includes('→')?'eff':''}">${esc(b)}</span></div>`).join('')}
   <p class="mu">Stats show original → effective after Cosmic Force. Originals are never overwritten.</p><div class="acts"><button class="pri" data-act="savechar">Save Character</button><button data-act="copy">Copy Details</button><button data-act="json">Export JSON</button><button data-act="rename">Reroll Name</button><button data-act="restart">${ask==='restart'?'Discard & start over?':'New Character'}</button></div></div>`}
- const [,lb,hp]=ST.find(([i])=>i===k),label=k==='subtype'&&S.res.race.id==='ultimate-race'?'Ultimate Race — True Form':lb,p=pool(k,S.res),tot=p.reduce((a,o)=>a+o.w,0),st=S.st[k],showW=view.k===k&&view.segs;
- const res=st==='revealed'&&!busy?`<div class="res"><div class="mu">${S.res[k].g?'':RN[rarOf(S.res[k].rw??S.res[k].w)]}${S.res[k].g||DEV?(S.res[k].g?'':' · ')+(S.res[k].w/tot*100).toFixed(2)+'% chance':''}</div><b>${esc(S.res[k].name)}</b>${S.res[k].d!==undefined?`<div class="mu">${S.res[k].d===0?'No stat change.':`Shifts Strength, Speed and Durability by ${S.res[k].d>0?'+':''}${Math.abs(S.res[k].d)>20?(S.res[k].d>0?'max':'min'):S.res[k].d} tier(s).`}</div>`:''}</div>`:'';
+ const [,lb,hp]=ST.find(([i])=>i===k),label=k==='subtype'&&S.res.race.id==='ultimate-race'?'Ultimate Race — True Form':lb,p=eff(k),tot=p.reduce((a,o)=>a+o.w,0),st=S.st[k],showW=view.k===k&&(view.segs||view.strip);
+ const res=st==='revealed'&&!busy?`<div class="res"><div class="mu">${S.res[k].g?'':RN[rarOf(S.res[k].rw??S.res[k].w)]}${S.res[k].g||DEV?(S.res[k].g?'':' · ')+((p.find(o=>o.id===S.res[k].id)?.w??S.res[k].w)/tot*100).toFixed(2)+'% chance':''}</div><b>${esc(S.res[k].name)}</b>${S.res[k].d!==undefined?`<div class="mu">${S.res[k].d===0?'No stat change.':`Shifts Strength, Speed and Durability by ${S.res[k].d>0?'+':''}${Math.abs(S.res[k].d)>20?(S.res[k].d>0?'max':'min'):S.res[k].d} tier(s).`}</div>`:''}</div>`:'';
  return head+`<div class="card"><h2 style="margin:0">${label}</h2>${hp?`<div class="mu">${hp}</div>`:''}
- ${showW?`<div class="wrap"><div id="wh" style="transform:rotate(${view.rot}deg)">${wheelSvg(view.segs)}</div></div>`:''}${res}
+ ${showW?(view.strip?reelHtml():`<div class="wrap"><div id="wh" style="transform:rotate(${view.rot}deg)">${wheelSvg(view.segs)}</div></div>`):''}${res}
  <div class="acts" style="justify-content:center">${st==='ready'||busy?`<button class="pri" data-act="spin" data-k="${k}" ${busy?'disabled':''}>${busy?'Spinning…':'SPIN'}</button>`:`<button class="pri" data-act="confirm" data-k="${k}">Confirm result</button>`}</div>
  ${DEV?`<details open><summary>Developer: outcomes &amp; odds</summary>${[...p].sort((a,b)=>b.w-a.w).map(o=>`<div class="row"><span>${esc(o.name)}</span><span>${(o.w/tot*100).toFixed(2)}%</span></div>`).join('')}</details>`:''}
  ${Object.keys(S.res).length?`<div class="acts"><button data-act="restart">${ask==='restart'?'Discard this character?':'Restart'}</button></div>`:''}</div>`}
@@ -135,6 +157,8 @@ function colView(){const all=ld(CK,[]),f=all.filter(c=>(c.name+c.race).toLowerCa
  <div>STR ${esc(stat(c.strength))} · SPD ${esc(stat(c.speed))} · DUR ${esc(stat(c.durability))}</div><div class="mu">Cosmic Force: ${esc(c.cosmicForce.name)} · Weakness: ${esc(c.weakness)}</div>
  <div class="acts"><button data-act="fav" data-id="${c.id}">${c.fav?'Unfavorite':'Favorite'}</button><button data-act="ccopy" data-id="${c.id}">Copy</button><button data-act="cjson" data-id="${c.id}">JSON</button><button data-act="del" data-id="${c.id}">${ask==='d'+c.id?'Delete — sure?':'Delete'}</button></div></div>`).join('')}
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,k=b.dataset.k,id=b.dataset.id;msg='';
+ if(a==='snd'){snd=!snd;sv('cf_snd',snd);if(snd)au();return render()}
+ if(a==='mode'){if(busy)return;mode=mode==='reel'?'wheel':'reel';sv('cf_mode',mode);view={k:null};msg=mode==='reel'?'Reel view. Boosted odds apply in both views.':'Wheel view. Boosted odds apply in both views.';return render()}
  if(a==='tab'){tab=b.dataset.v;panel=null;ask=null;return render()}
  if(a==='spin')return spin(k);
  if(a==='confirm'){if(S.st[k]!=='revealed'||busy)return;S.st[k]='confirmed';settle(S);view={k:null};save();const nx=cur();if(nx&&S.st[nx]==='ready')return spin(nx);return render()}
